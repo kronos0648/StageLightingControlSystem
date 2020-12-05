@@ -54,7 +54,7 @@ void setRGB()//현재 조명 디바이스의 색상 설정
     b[4]='\0';
     blue=atoi(b);
 
-    printf("현재 %d번 조명 색상 RGB 수치\n",device_num);
+    printf("현재 %d번 조명 디바이스 색상 RGB 수치\n",device_num);
     printf("Red : %d\n",red);
     printf("Green : %d\n",green);
     printf("Blue : %d\n",blue);
@@ -67,7 +67,7 @@ void listenRequest()//제어 시스템의 색상 변경 요청을 수신
     {
         if(addr[(device_num-1)*11+10]=='1')//색상 변경 요청을 받을 때
         {
-            printf("제어 시스템이 %d번 디바이스에 색상 변경을 요청했습니다.\n");
+            printf("제어 시스템이 %d번 디바이스에 색상 변경을 요청했습니다.\n",device_num);
             setRGB();//색상 변경
             printf("색상 변경을 완료했습니다.\n");
         }
