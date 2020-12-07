@@ -6,8 +6,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 caddr_t addr; //mmap된 데이터
+size_t addr_buf;//mmap된 사이즈
 char* filename;//mmap용 파일
 
 void cli();
@@ -15,6 +17,7 @@ void device_off();
 void control_off(int num);
 void colorControl(int num);
 void colorChange();
+void interrupt_catch(int sig);
 
 void device_off()//전원을 해제할 조명 장치 선택
 {
@@ -142,7 +145,6 @@ void cli()
         scanf("%d",&select);
         switch(select)
         {
-
             case 1:
             device_off();
             break;
@@ -189,8 +191,8 @@ int main(int argc,char *argv[])
         exit(1);
     }
     
-
-    addr=mmap(NULL,statbuf.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,(off_t)0);//mmap으로 파일을 메모리에 매핑
+    addr_buf=statbuf.st_size;
+    addr=mmap(NULL,addr_buf,PROT_READ|PROT_WRITE,MAP_SHARED,fd,(off_t)0);//mmap으로 파일을 메모리에 매핑
     if(addr==MAP_FAILED)//메모리 매핑 실패 시
     {
         perror("mmap");
@@ -199,6 +201,16 @@ int main(int argc,char *argv[])
     close(fd);//파일 닫기
     filename=(char*)malloc(sizeof(argv[1]));
     strcpy(filename,argv[1]);//인자로 받은 파일 이름을 전역 변수로 저장
+    signal(SIGINT,interrupt_catch);
     cli();//사용자 인터페이스 출력
 }
 
+void interrupt_catch(int sig)//안전한 종료를 위한 인터럽트 시그널 캐치 함수
+{
+    signal(sig,SIG_IGN);
+    if((munmap(addr,addr_buf)==-1))
+    {
+        perror("munmap");
+    }
+    exit(0);
+}

@@ -6,9 +6,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 
 caddr_t addr;//mmap된 데이터
+size_t addr_buf;//mmap된 사이즈
 int device_num;//현재 조명 디바이스의 식별 번호
 int red;//현재 조명 디바이스의 RGB 중 Red 값
 int green;//현재 조명 디바이스의 RGB 중 Green 값
@@ -17,6 +19,7 @@ int blue;//현재 조명 디바이스의 RGB 중 Blue 값
 void device_off();
 void setRGB();
 void listenRequest();
+void interrupt_catch(int sig);
 
 void device_off()//제어 시스템에서 현재 조명 디바이스의 종료를 요청할 때 종료
 {
@@ -103,7 +106,9 @@ int main(int argc,char* argv[])
         perror("open");
         exit(1);
     }
-    
+
+    addr_buf=statbuf.st_size;
+
     //mmap으로 파일을 메모리 매핑
     addr=mmap(NULL,statbuf.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,(off_t)0);
     if(addr==MAP_FAILED)//메모리 매핑 실패 시
@@ -124,11 +129,22 @@ int main(int argc,char* argv[])
         printf("%d번 조명 디바이스는 이미 전원이 켜져 있습니다.\n",device_num);
         exit(1);
     }
-
+    signal(SIGINT,interrupt_catch);
     addr[(device_num-1)*11]='1'; //조명의 전원 상태를 On으로 변경
-
     printf("%d번 조명 디바이스 셋업 완료\n",device_num);
     setRGB(); //전원을 키고 현재 저장된 색상 옵션으로 조명 설정
     listenRequest(); //제어 시스템의 요청을 듣기 시작
     device_off();//요청 수신을 멈출 때 조명 디바이스 전원 해제
+}
+
+void interrupt_catch(int sig)//인터럽트 발생 시 전원의 안전한 종료
+{
+    signal(sig,SIG_IGN);
+    addr[(device_num-1)*11]='0';//조명의 전원 상태를 Off로 변경
+    if(munmap(addr,addr_buf)==-1)//메모리 매핑 해제
+    {
+        perror("munmap");
+    }
+    printf("인터럽트가 발생하여 %d번 조명 디바이스의 전원이 해제되었습니다.\n");
+    exit(0);
 }
